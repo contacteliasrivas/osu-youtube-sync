@@ -2,12 +2,14 @@ require('dotenv').config();
 const express = require('express');
 const path = require('path');
 
-
 const { getOsuToken, getBeatmapsMasJugados } = require('./osuApi');
 const { 
     getAuthUrl, guardarToken, cargarToken, 
     buscarVideoYouTube, crearPlaylistOficial, agregarVideoAPlaylist 
 } = require('./youtubeApi');
+
+// 🛠️ FASE 2: Importamos la inicialización de la base de datos
+const { inicializarDB } = require('./database');
 
 const app = express();
 const PUERTO = 3000;
@@ -15,10 +17,8 @@ const OSU_USER_ID = 17206927; // Tu ID de osu!
 
 app.use(express.static(path.join(__dirname, '../public')));
 
-// Ruta principal que se activa al pulsar el botón en la web
 app.get('/api/generar', async (req, res) => {
     try {
-        // Si no estás logueado en Google, frena todo y manda el link de login
         if (!cargarToken()) {
             console.log("🔒 No hay sesión activa de YouTube. Solicitando login...");
             return res.json({ exito: false, authRequired: true, authUrl: getAuthUrl() });
@@ -32,7 +32,7 @@ app.get('/api/generar', async (req, res) => {
         let misCanciones = await getBeatmapsMasJugados(OSU_USER_ID, token);
         if (misCanciones.length === 0) throw new Error("No se encontraron canciones en tu perfil.");
         
-        // LIMITADO A 10 CANCIONES (Para cuidar tu cuota diaria de la API)
+        // LIMITADO A 10 CANCIONES
         misCanciones = misCanciones.slice(0, 10);
 
         console.log("📁 Creando playlist privada en tu cuenta de YouTube...");
@@ -42,14 +42,27 @@ app.get('/api/generar', async (req, res) => {
         console.log("🔍 Buscando canciones y añadiéndolas una a una...");
         
         for (const cancion of misCanciones) {
-            const videoId = await buscarVideoYouTube(cancion);
-            if (videoId) {
-                await agregarVideoAPlaylist(playlistId, videoId);
-                agregados++;
-                console.log(`✅ Añadido con éxito: ${cancion}`);
+            try {
+                // Revisamos que los datos base existan
+                if (!cancion.artista || !cancion.titulo) {
+                    console.log(`⚠️ Datos inválidos en osu!, saltando...`);
+                    continue;
+                }
+
+                // 🛠️ Le pasamos el objeto entero (que ahora trae el Unicode)
+                const videoId = await buscarVideoYouTube(cancion);
+                
+                if (videoId) {
+                    await agregarVideoAPlaylist(playlistId, videoId);
+                    agregados++;
+                    console.log(`✅ Añadido con éxito: ${cancion.artista} - ${cancion.titulo}`);
+                }
+            } catch (errCancion) {
+                console.error(`⚠️ Falló la sincronización para "${cancion.artista} - ${cancion.titulo}":`, errCancion.message);
             }
-            // Pausa de 1.2 segundos para que YouTube no nos bloquee por ir muy rápido
-            await new Promise(resolve => setTimeout(resolve, 1200));
+            
+            // Pausa de 2 segundos para cuidar la cuota de YouTube
+            await new Promise(resolve => setTimeout(resolve, 2000));
         }
 
         if (agregados > 0) {
@@ -66,14 +79,12 @@ app.get('/api/generar', async (req, res) => {
     }
 });
 
-// Ruta a la que Google redirige al usuario tras aceptar los permisos
 app.get('/oauth2callback', async (req, res) => {
     const code = req.query.code;
     if (code) {
         try {
             await guardarToken(code);
             console.log("🔑 Acceso concedido. Token guardado localmente.");
-            // Mensaje elegante antes de devolverte a la app
             res.send(`
                 <body style="background:#1a1a1a; color:#ff66aa; text-align:center; font-family:sans-serif; margin-top:15%;">
                     <h2>¡Permiso concedido, master! 🚀</h2>
@@ -91,10 +102,18 @@ app.get('/oauth2callback', async (req, res) => {
 app.listen(PUERTO, async () => {
     console.log(`\n=========================================`);
     console.log(`🌐 SERVIDOR CORE INICIADO - PROTOCOLO OAUTH2`);
+    
+    // 🛠️ Inicializamos SQLite antes de operar
+    try {
+        await inicializarDB();
+        console.log(`📦 BASE DE DATOS LOCAL: Inicializada y mapeada.`);
+    } catch (dbError) {
+        console.error(`❌ CRÍTICO: No se pudo iniciar la caché de SQLite:`, dbError.message);
+    }
+
     console.log(`🚀 Desplegando interfaz en el navegador...`);
     console.log(`=========================================\n`);
     
-    // Comando nativo de Windows para abrir el navegador por defecto
     const { exec } = require('child_process');
     exec(`start http://localhost:${PUERTO}`);
 });

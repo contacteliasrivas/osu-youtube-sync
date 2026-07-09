@@ -1,29 +1,31 @@
 {
-  "name": "osu-spotify-sync",
+  "name": "osu-youtube-sync",
   "version": "1.0.0",
   "description": "Permite al usuario sincronizar sus canciones preferidas de osu! a su Spotify directamente, sin tener que buscarlos manualmente por spotify.",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1", 
+    "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node src/index.js"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/contacteliasrivas/osu-spotify-sync.git"
+    "url": "git+https://github.com/contacteliasrivas/osu-youtube-sync.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "bugs": {
-    "url": "https://github.com/contacteliasrivas/osu-spotify-sync/issues"
+    "url": "https://github.com/contacteliasrivas/osu-youtube-sync/issues"
   },
-  "homepage": "https://github.com/contacteliasrivas/osu-spotify-sync#readme",
+  "homepage": "https://github.com/contacteliasrivas/osu-youtube-sync#readme",
   "dependencies": {
     "axios": "^1.18.1",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "googleapis": "^173.0.0",
-    "open": "^11.0.0"
+    "open": "^11.0.0",
+    "sqlite3": "^6.0.1",
+    "string-similarity": "^4.0.4"
   }
 }
