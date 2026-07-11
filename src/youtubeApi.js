@@ -24,7 +24,6 @@ function parsearDuracionISO(duracionISO) {
     return (parseInt(match[1] || 0, 10) * 3600) + (parseInt(match[2] || 0, 10) * 60) + parseInt(match[3] || 0, 10);
 }
 
-// 🛠️ Recibe el objeto completo con los Unicodes
 async function buscarVideoYouTube(cancionObjeto) {
     try {
         const { artista, artista_unicode, titulo, titulo_unicode, duracion_segundos } = cancionObjeto;
@@ -37,7 +36,6 @@ async function buscarVideoYouTube(cancionObjeto) {
 
         console.log(`🔍 [Caché MISS] Analizando candidatos para: ${artista} - ${titulo} (~${duracion_segundos}s)`);
         
-        // Buscamos priorizando el nombre nativo (Unicode)
         const query = `${artista_unicode} - ${titulo_unicode}`; 
         
         const buscarResponse = await youtube.search.list({
@@ -51,29 +49,38 @@ async function buscarVideoYouTube(cancionObjeto) {
         if (candidatos.length === 0) return null;
 
         const listaIds = candidatos.map(item => item.id.videoId).join(',');
-        const videosResponse = await youtube.videos.list({ part: 'contentDetails,snippet', id: listaIds });
+        
+        // 🚀 MEJORA: Añadimos 'statistics' para poder leer el número de vistas (viewCount)
+        const videosResponse = await youtube.videos.list({ 
+            part: 'contentDetails,snippet,statistics', 
+            id: listaIds 
+        });
         const detallesVideos = videosResponse.data.items || [];
         
         let mejorVideoId = null;
         let mejorPuntaje = -999;
         let infoMejorVideo = "";
-        let similitudTextoGanador = 0; // 🛡️ Guarda el % de coincidencia
+        let similitudTextoGanador = 0;
+        let esCanalOficialGanador = false;
+        let contieneOriginalGanador = false;
 
         for (const video of detallesVideos) {
             const vId = video.id;
             const vTitulo = video.snippet.title;
-            const vCanal = video.snippet.channelTitle;
+            const vCanal = video.snippet.channelTitle.toLowerCase();
             const vDuracionSegundos = parsearDuracionISO(video.contentDetails.duration);
+            // Extraemos las vistas reales del video
+            const vVistas = parseInt(video.statistics?.viewCount || 0, 10);
 
             let puntaje = 0;
 
-            // REGLA 1: Tolerancia de tiempo
+            // REGLA 1: Tolerancia de tiempo (Máximo 60 puntos)
             const diferenciaTiempo = Math.abs(vDuracionSegundos - duracion_segundos);
             if (diferenciaTiempo <= 4) puntaje += 60;
             else if (diferenciaTiempo <= 10) puntaje += 30;
-            else puntaje -= 50;
+            else puntaje -= 60; // Penalización si la duración no cuadra nada
 
-            // REGLA 2: Similitud de Texto Doble (Compara contra Romaji y Unicode)
+            // REGLA 2: Similitud de Texto (Máximo 40 puntos)
             const textoYT = vTitulo.toLowerCase();
             const similitudRomaji = stringSimilarity.compareTwoStrings(`${artista} - ${titulo}`.toLowerCase(), textoYT);
             const similitudUnicode = stringSimilarity.compareTwoStrings(`${artista_unicode} - ${titulo_unicode}`.toLowerCase(), textoYT);
@@ -81,34 +88,69 @@ async function buscarVideoYouTube(cancionObjeto) {
             const mejorSimilitud = Math.max(similitudRomaji, similitudUnicode);
             puntaje += (mejorSimilitud * 40);
 
-            // REGLA 3: Anti-Gameplay
-            const terminosGameplay = ['gameplay', 'replay', ' play', ' keyboard', ' fc ', ' pass', ' liveplay', ' skin'];
-            if (terminosGameplay.some(term => textoYT.includes(term) || vCanal.toLowerCase().includes(term))) {
-                puntaje -= 80;
+            // 🚀 NUEVA REGLA 2.5: ¿Contiene el texto exacto? 
+            // Si el título de YouTube contiene textualmente "Artista - Titulo", sumamos un gran bonus
+            const contieneOriginal = textoYT.includes(`${artista} - ${titulo}`.toLowerCase()) || 
+                                     textoYT.includes(`${artista_unicode} - ${titulo_unicode}`.toLowerCase());
+            if (contieneOriginal) puntaje += 35;
+
+            // 🚀 REGLA 3: Anti-Gameplay ULTRA REFORZADO (Evitamos gameplays de osu!)
+            const terminosGameplay = [
+                'gameplay', 'replay', ' play', ' keyboard', ' fc ', ' pass', ' liveplay', 
+                ' skin', 'osu!', 'beatmap', ' difficulty', ' diff', '★', ' pp ', 'autoplayer', 'cover'
+            ];
+            if (terminosGameplay.some(term => textoYT.includes(term) || vCanal.includes(term))) {
+                puntaje -= 180; // Penalización masiva, un gameplay nunca ganará
             }
 
-            // REGLA 4: Bonus por oficialidad
-            const terminosOficiales = ['official', 'audio', 'topic', 'lyrics', 'mv', 'video oficial'];
-            if (terminosOficiales.some(term => textoYT.includes(term) || vCanal.toLowerCase().includes(term))) {
-                puntaje += 15;
+            // 🚀 REGLA 4: Bonus por canal oficial o distribuidor autorizado (+35 puntos)
+            const esCanalOficial = vCanal.includes('topic') || 
+                                   vCanal.includes('vevo') || 
+                                   vCanal.includes(artista.toLowerCase()) || 
+                                   vCanal.includes(artista_unicode.toLowerCase());
+            
+            if (esCanalOficial) {
+                puntaje += 35;
+            } else {
+                // Sigue siendo un bonus si el título dice que es oficial
+                const terminosOficiales = ['official', 'audio', 'lyrics', 'mv', 'video oficial'];
+                if (terminosOficiales.some(term => textoYT.includes(term))) puntaje += 15;
+            }
+
+            // 🚀 NUEVA REGLA 5: Filtro por popularidad (Vistas sugerido por el master)
+            if (vVistas > 5000000) puntaje += 30;       // Más de 5 Millones (Hit mundial)
+            else if (vVistas > 500000) puntaje += 15;   // Más de 500k vistas
+            else if (vVistas < 10000 && !esCanalOficial) {
+                puntaje -= 40; // Si tiene menos de 10k vistas y NO es un canal oficial, probablemente sea basura/resubido
             }
 
             // Filtro anti-remix no deseado
             if (textoYT.includes('remix') && !titulo.toLowerCase().includes('remix') && !titulo_unicode.toLowerCase().includes('remix')) {
-                puntaje -= 40; 
+                puntaje -= 50; 
             }
 
+            // Guardamos al mejor candidato de la ronda
             if (puntaje > mejorPuntaje) {
                 mejorPuntaje = puntaje;
                 mejorVideoId = vId;
                 similitudTextoGanador = mejorSimilitud; 
-                infoMejorVideo = `"${vTitulo}" [Puntaje: ${puntaje.toFixed(1)} | Similitud: ${(mejorSimilitud * 100).toFixed(0)}%]`;
+                esCanalOficialGanador = esCanalOficial;
+                contieneOriginalGanador = contieneOriginal;
+                infoMejorVideo = `"${vTitulo}" [Canal: ${video.snippet.channelTitle} | Vistas: ${vVistas.toLocaleString()} | Similitud: ${(mejorSimilitud * 100).toFixed(0)}%]`;
             }
         }
 
-        // 🛡️ FILTRO DE SEGURIDAD (Mínimo 35%)
-        if (mejorVideoId && similitudTextoGanador < 0.35) {
-            console.log(`⚠️ [Filtro Seguridad] Ganador rechazado: Similitud ${(similitudTextoGanador * 100).toFixed(0)}% (Mínimo requerido: 65%). Evitando video erróneo.`);
+        // 🛡️ FILTRO DE SEGURIDAD INTELIGENTE Y RIGUROSO
+        let umbralCorte = 0.65; // Tu 65% de rigurosidad base.
+        
+        // Si estamos 100% seguros de que es el canal oficial o el título contiene la cadena exacta,
+        // bajamos el umbral a 45% porque títulos oficiales largos como "Artist - Title (Official Music Video Released by...)" bajan el porcentaje de similitud textual por culpa del relleno.
+        if (esCanalOficialGanador || contieneOriginalGanador) {
+            umbralCorte = 0.45; 
+        }
+
+        if (mejorVideoId && similitudTextoGanador < umbralCorte) {
+            console.log(`⚠️ [Filtro Seguridad] Ganador rechazado: Similitud ${(similitudTextoGanador * 100).toFixed(0)}% (Mínimo: ${umbralCorte * 100}%). Prefiriendo fallar seguro.`);
             return null;
         }
 

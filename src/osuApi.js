@@ -27,7 +27,7 @@ async function getBeatmapsMasJugados(userId, token) {
                 'Accept': 'application/json',
                 'Content-Type': 'application/json'
             },
-            params: { limit: 10 }
+            params: { limit: 100 } //Ampliamos a 100 para tener más candidatos y filtrar mejor
         });
 
         // 🛠️ UPGRADE UNICODE: Guardamos la versión normal y la nativa (ruso, japonés, etc.)
@@ -47,5 +47,43 @@ async function getBeatmapsMasJugados(userId, token) {
         return [];
     }
 }
+// 👤 NUEVA FUNCIÓN 1: Cambia el código que nos da el usuario por su llave privada
+async function getOsuUserToken(code) {
+    try {
+        const response = await axios.post('https://osu.ppy.sh/oauth/token', {
+            client_id: process.env.OSU_CLIENT_ID,
+            client_secret: process.env.OSU_CLIENT_SECRET,
+            code: code,
+            grant_type: 'authorization_code',
+            redirect_uri: process.env.OSU_REDIRECT_URI
+        });
+        return response.data.access_token; // Devuelve la llave personal del usuario
+    } catch (error) {
+        console.error("Error obteniendo el token de usuario de osu!:", error.response ? error.response.data : error.message);
+        throw error;
+    }
+}
 
-module.exports = { getOsuToken, getBeatmapsMasJugados };
+// 👤 NUEVA FUNCIÓN 2: Usa la llave para preguntar "¿Quién soy?" (/me)
+async function getOsuUserData(accessToken) {
+    try {
+        const response = await axios.get('https://osu.ppy.sh/api/v2/me', {
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Accept': 'application/json'
+            }
+        });
+        return response.data; // Devuelve el perfil completo (username, avatar, id, etc.)
+    } catch (error) {
+        console.error("Error obteniendo los datos del usuario de osu!:", error.response ? error.response.data : error.message);
+        throw error;
+    }
+}
+
+module.exports = { 
+    getOsuToken, 
+    getBeatmapsMasJugados, 
+    getOsuUserToken, 
+    getOsuUserData 
+};
+

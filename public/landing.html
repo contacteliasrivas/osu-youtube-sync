@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>osu! Sync | Lleva tus mapas a YouTube</title>
+    <style>
+        :root {
+            --bg-color: #fcedf5; 
+            --primary-pink: #ff66aa;
+            --text-main: #4a4a4a;
+            --text-muted: #7a7a7a;
+            --clay-shadow-out: 12px 12px 24px rgba(255, 102, 170, 0.15), -12px -12px 24px rgba(255, 255, 255, 0.8);
+            --clay-shadow-in: inset 6px 6px 12px rgba(255, 255, 255, 0.9), inset -6px -6px 12px rgba(255, 102, 170, 0.08);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-main); display: flex; flex-direction: column; align-items: center; min-height: 100vh; overflow-x: hidden; }
+
+        header { margin-top: 60px; text-align: center; max-width: 800px; padding: 0 20px; }
+        h1 { color: var(--primary-pink); font-size: 3rem; margin-bottom: 15px; text-shadow: 2px 2px 4px rgba(255, 102, 170, 0.1); }
+        p.subtitle { font-size: 1.2rem; color: var(--text-muted); line-height: 1.6; margin-bottom: 40px; }
+
+        .clay-card { background: #ffffff; border-radius: 40px; padding: 40px; width: 90%; max-width: 500px; text-align: center; box-shadow: var(--clay-shadow-out), var(--clay-shadow-in); margin-bottom: 60px; border: 2px solid rgba(255, 255, 255, 0.5); }
+        
+        .clay-btn { background: var(--primary-pink); color: white; border: none; padding: 18px 32px; font-size: 20px; font-weight: bold; border-radius: 25px; cursor: pointer; width: 100%; transition: all 0.2s ease; box-shadow: 8px 8px 16px rgba(255, 102, 170, 0.3), -8px -8px 16px rgba(255, 255, 255, 0.8), inset 4px 4px 8px rgba(255, 255, 255, 0.4), inset -4px -4px 8px rgba(204, 68, 136, 0.4); }
+        .clay-btn:hover { transform: translateY(-3px); background: #ff77b3; }
+
+        /* Estilos de la tabla Claymorphism */
+        .table-container { width: 90%; max-width: 800px; margin-bottom: 80px; }
+        h2.table-title { color: var(--primary-pink); text-align: center; margin-bottom: 25px; font-size: 1.8rem; }
+        .clay-table { width: 100%; border-collapse: separate; border-spacing: 0 15px; }
+        .clay-table th { padding: 15px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+        .clay-table td { background: #ffffff; padding: 20px 15px; text-align: center; color: var(--text-main); font-weight: 500; }
+        .clay-table tr td:first-child { border-radius: 20px 0 0 20px; }
+        .clay-table tr td:last-child { border-radius: 0 20px 20px 0; }
+        .clay-table tbody tr { box-shadow: 6px 6px 12px rgba(255, 102, 170, 0.1), -6px -6px 12px rgba(255, 255, 255, 0.8); transition: transform 0.2s ease; }
+        .clay-table tbody tr:hover { transform: scale(1.02); }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>osu! Sync</h1>
+        <p class="subtitle">Sincroniza tus mapas favoritos de osu! directamente a una lista de reproducción privada de YouTube con un solo clic.</p>
+    </header>
+
+    <div class="clay-card">
+        <h2 style="margin-bottom: 25px; color: var(--text-main);">Bienvenido</h2>
+        <button class="clay-btn" onclick="window.location.href='/auth/osu'">
+            🎮 Inicia sesión con tu cuenta de osu!
+        </button>
+    </div>
+
+    <!-- TABLA DE MAPAS TOP -->
+    <div class="table-container">
+        <h2 class="table-title">🔥 Mapas Más Buscados por la Comunidad</h2>
+        <table class="clay-table">
+            <thead>
+                <tr>
+                    <th>Rango</th>
+                    <th>Artista - Título</th>
+                    <th>Sincronizaciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td>#1</td><td>ElyOtto - SugarCrash!</td><td>1,245</td></tr>
+                <tr><td>#2</td><td>The Quick Brown Fox - The Big Black</td><td>980</td></tr>
+                <tr><td>#3</td><td>Renard - Blue Night</td><td>850</td></tr>
+                <tr><td>#4</td><td>Alan Walker - Faded</td><td>620</td></tr>
+                <tr><td>#5</td><td>YOASOBI - Yoru ni Kakeru</td><td>590</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+</body>
+</html>
