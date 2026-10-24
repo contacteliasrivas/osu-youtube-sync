@@ -9,7 +9,7 @@ Sistema automatizado de sincronización de beatmaps de osu! a playlists privadas
 | Componente | Tecnología |
 |-----------|------------|
 | Backend Core | Node.js (JavaScript / Asíncrono) |
-| Base de Datos | SQLite3 (Caché local de alta velocidad) |
+| Base de Datos | PostgresSQL (Caché local de alta velocidad) |
 | Algoritmo de Texto | `string-similarity` (Coeficiente de Sørensen-Dice) |
 | API Integración 1 | osu! API v2 (OAuth2 - Client Credentials) |
 | API Integración 2 | YouTube Data API v3 (OAuth2 - Offline Access) |
